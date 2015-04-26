@@ -1,0 +1,12 @@
+div#a {
+  text-decoration: underline;
+}
+body#body {
+  font-size: 12px;
+}
+div, #a {
+  color: yellow;
+}
+.unused {
+  color: green;
+}
