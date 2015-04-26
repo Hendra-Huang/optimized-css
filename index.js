@@ -222,7 +222,7 @@ while (stack.length > 0) {
     });
   }
 }
-//console.log(selectableDOM);
+//console.log(annotatedRules[3].matchedNodes);
 
 // Order Specificity
 var orderSpecificity = function(rules) {
@@ -283,9 +283,9 @@ var orderSpecificity = function(rules) {
 // Algorithm Effective Selector
 selectableDOM.forEach(function(dom) {
   var getMatchingRules = function(dom) {
-    annotatedRules.forEach(function(rule) {
-      var matchedRules = [];
+    var matchedRules = [];
 
+    annotatedRules.forEach(function(rule) {
       rule.matchedNodes.forEach(function(node) {
         if (node.id == dom.id) {
           matchedRules.push(rule);
@@ -296,9 +296,9 @@ selectableDOM.forEach(function(dom) {
     return matchedRules;
   };
 
-  var rules = getMatchingRules(dom);
-  console.log(dom.name);
-  console.log(rules);
+  var rules = getMatchingRules(dom),
+    orderedRules = orderSpecificity(rules)
+  ;
 });
 
 //var result = css.stringify(ast);
