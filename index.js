@@ -10,7 +10,7 @@ var file = process.argv[2] ,
 
 stylesheets = new Stylesheet($('link'));
 
-var selectorMatching = function(dom) {
+var SelectorMatching = function() {
   var hashtable = {
     id: {},
     class: {},
@@ -104,77 +104,72 @@ var selectorMatching = function(dom) {
   });
 
   // selector matching
-  var attributes = dom.attribs;
-  var matchedRules = [];
-  if (attributes !== undefined) {
-    if ('id' in attributes) {
-      var rules = hashtable.id['#'+attributes.id];
+  return function(dom) {
+    var attributes = dom.attribs;
+    var matchedRules = [];
+    if (attributes !== undefined) {
+      if ('id' in attributes) {
+        var rules = hashtable.id['#'+attributes.id];
 
+        if (rules !== undefined) {
+          rules.forEach(function(rule) {
+            var selector = rule.selector;
+
+            if ($(dom).is(selector)) {
+              matchedRules.push(rule);
+            }
+          });
+        }
+      }
+      if ('class' in attributes) {
+        var rules = hashtable.class['.'+attributes.class];
+
+        if (rules !== undefined) {
+          rules.forEach(function(rule) {
+            var selector = rule.selector;
+
+            if ($(dom).is(selector)) {
+              matchedRules.push(rule);
+            }
+          });
+        }
+      }
+
+      // select from tag hashtable
+      var rules = hashtable.tag[dom.name];
       if (rules !== undefined) {
-        // loop from the last so there will be no problem when splice the array
-        for (var i = rules.length - 1; i >= 0; i--) {
-          var selector = rules[i].selector;
+        rules.forEach(function(rule) {
+          var selector = rule.selector;
 
           if ($(dom).is(selector)) {
-            matchedRules.push(rules[i]);
-            rules.splice(i, 1); // splice for removing the rule from hashtable
+            matchedRules.push(rule);
           }
-        }
+        });
       }
-    }
-    if ('class' in attributes) {
-      var rules = hashtable.class['.'+attributes.class];
 
-      if (rules !== undefined) {
-        // loop from the last so there will be no problem when splice the array
-        for (var i = rules.length - 1; i >= 0; i--) {
-          var selector = rules[i].selector;
+      // select from uncategorized
+      for (property in hashtable.uncategorized) {
+        var rules = hashtable.uncategorized[property];
+        rules.forEach(function(rule) {
+          var selector = rule.selector;
 
           if ($(dom).is(selector)) {
-            matchedRules.push(rules[i]);
-            rules.splice(i, 1); // splice for removing the rule from hashtable
+            matchedRules.push(rule);
           }
-        }
+        });
       }
     }
 
-    // select from tag hashtable
-    var rules = hashtable.tag[dom.name];
-    if (rules !== undefined) {
-      // loop from the last so there will be no problem when splice the array
-      for (var i = rules.length - 1; i >= 0; i--) {
-        var selector = rules[i].selector;
-
-        if ($(dom).is(selector)) {
-          matchedRules.push(rules[i]);
-          rules.splice(i, 1); // splice for removing the rule from hashtable
-        }
-      }
-    }
-
-    // select from uncategorized
-    for (property in hashtable.uncategorized) {
-      var rules = hashtable.uncategorized[property];
-      // loop from the last so there will be no problem when splice the array
-      for (var i = rules.length - 1; i >= 0; i--) {
-        var selector = rules[i].selector;
-
-        if ($(dom).is(selector)) {
-          matchedRules.push(rules[i]);
-          rules.splice(i, 1); // splice for removing the rule from hashtable
-        }
-      }
-    }
+    //console.log(matchedRules);
+    return matchedRules;
   }
-
-  //console.log(matchedRules);
-  return matchedRules;
 };
 
 // Algorithm Matched Selector
 var annotatedRules = [],
   selectableDOM = [],
   id = 1,
+  selectorMatching = SelectorMatching(),
   stack = [$('body')[0]]
 ;
 while (stack.length > 0) {
@@ -198,25 +193,36 @@ while (stack.length > 0) {
   if (matchedRules.length > 0) {
     selectableDOM.push(node);
     matchedRules.forEach(function(rule) {
-      var nodes = [],
-        selector = rule.selector
-      ;
+      // if the rule doesn't exist, then push it to annotatedRules
+      var duplicate = annotatedRules.filter(function(annotatedRule) {
+        if (annotatedRule.orderPosition == rule.orderPosition) {
+          return true;
+        }
 
-      $(selector).each(function(key, element) {
-        nodes.push(element);
-      });
-      
-      annotatedRules.push({
-        selector: selector,
-        declarations: rule.declarations,
-        orderPosition: rule.orderPosition,
-        matched: true,
-        matchedNodes: nodes
-      });
+        return false;
+      })
+
+      if (duplicate.length == 0) {
+        var nodes = [],
+          selector = rule.selector
+        ;
+
+        $(selector).each(function(key, element) {
+          nodes.push(element);
+        });
+        
+        annotatedRules.push({
+          selector: selector,
+          declarations: rule.declarations,
+          orderPosition: rule.orderPosition,
+          matched: true,
+          matchedNodes: nodes
+        });
+      }
     });
   }
 }
-console.log(selectableDOM);
+//console.log(selectableDOM);
 
 //var result = css.stringify(ast);
 //console.log(ast.stylesheet.rules[0]);
