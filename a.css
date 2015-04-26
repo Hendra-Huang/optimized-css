@@ -1,10 +1,10 @@
-div#a {
+body div#a {
   text-decoration: underline;
 }
 body#body {
   font-size: 12px;
 }
-div, #a {
+body div, #a {
   color: yellow;
 }
 .unused {

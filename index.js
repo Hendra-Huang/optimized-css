@@ -19,14 +19,15 @@ var selectorMatching = function(dom) {
   };
 
   var getRightMostSelector = function(selector) {
-    var selectorToken = /(?=\.)|(?=#)|(?=\[)/,
+    var selectorToken = /(?=\.)|(?=#)|(?=\[)|(?= )/,
       tokenizedSelector = selector.split(selectorToken)
     ;
 
-    return tokenizedSelector.pop();
+    return tokenizedSelector.pop().trim();
   }
 
   // generate hashtable
+  var orderPosition = 1;
   stylesheets.forEach(function(stylesheet) {
     var rules = stylesheet.stylesheet.rules;
 
@@ -41,33 +42,62 @@ var selectorMatching = function(dom) {
 
           if (rightMostSelector[0] == '#') {
             if (rightMostSelector in hashtable.id) {
-              hashtable.id[rightMostSelector].push({selector: selector, declarations: declarations});
+              hashtable.id[rightMostSelector].push({
+                selector: selector, 
+                declarations: declarations,
+                orderPosition: orderPosition
+              });
             } else {
-              hashtable.id[rightMostSelector] = [{selector: selector, declarations: declarations}];
+              hashtable.id[rightMostSelector] = [{
+                selector: selector,
+                declarations: declarations,
+                orderPosition: orderPosition
+              }];
             }
-            //idHashtable.push(selector);
           } else if (rightMostSelector[0] == '.') {
             if (rightMostSelector in hashtable.class) {
-              hashtable.class[rightMostSelector].push({selector: selector, declarations: declarations});
+              hashtable.class[rightMostSelector].push({
+                selector: selector,
+                declarations: declarations,
+                orderPosition: orderPosition
+              });
             } else {
-              hashtable.class[rightMostSelector] = [{selector: selector, declarations: declarations}];
+              hashtable.class[rightMostSelector] = [{
+                selector: selector,
+                declarations: declarations,
+                orderPosition: orderPosition
+              }];
             }
-            //classHashtable.push(selector);
           } else if (rightMostSelector.match(/^\w+/)) {
             if (rightMostSelector in hashtable.tag) {
-              hashtable.tag[rightMostSelector].push({selector: selector, declarations: declarations});
+              hashtable.tag[rightMostSelector].push({
+                selector: selector, 
+                declarations: declarations,
+                orderPosition: orderPosition
+              });
             } else {
-              hashtable.tag[rightMostSelector] = [{selector: selector, declarations: declarations}];
+              hashtable.tag[rightMostSelector] = [{
+                selector: selector, 
+                declarations: declarations,
+                orderPosition: orderPosition
+              }];
             }
-            //tagHashtable.push(selector);
           } else {
             if (rightMostSelector in hashtable.uncategorized) {
-              hashtable.uncategorized[rightMostSelector].push({selector: selector, declarations: declarations});
+              hashtable.uncategorized[rightMostSelector].push({
+                selector: selector, 
+                declarations: declarations,
+                orderPosition: orderPosition
+              });
             } else {
-              hashtable.uncategorized[rightMostSelector] = [{selector: selector, declarations: declarations}];
+              hashtable.uncategorized[rightMostSelector] = [{
+                selector: selector,
+                declarations: declarations,
+                orderPosition: orderPosition
+              }];
             }
-            //uncategorizedHashtable.push(selector);
           }
+          orderPosition++;
         });
       }
     });
@@ -81,99 +111,70 @@ var selectorMatching = function(dom) {
       var rules = hashtable.id['#'+attributes.id];
 
       if (rules !== undefined) {
-        rules.forEach(function(rule) {
-          var selector = rule.selector;
+        // loop from the last so there will be no problem when splice the array
+        for (var i = rules.length - 1; i >= 0; i--) {
+          var selector = rules[i].selector;
 
           if ($(dom).is(selector)) {
-            matchedRules.push(rule);
+            matchedRules.push(rules[i]);
+            rules.splice(i, 1); // splice for removing the rule from hashtable
           }
-        });
+        }
       }
-      //idHashtable.forEach(function(selector) {
-        //var rightMostSelector = getRightMostSelector(selector);
-
-        //if (rightMostSelector == ('#'+attributes.id)) {
-          //matchedRules.push(selector);
-        //}
-      //});
     }
     if ('class' in attributes) {
       var rules = hashtable.class['.'+attributes.class];
 
       if (rules !== undefined) {
-        rules.forEach(function(rule) {
-          var selector = rule.selector;
+        // loop from the last so there will be no problem when splice the array
+        for (var i = rules.length - 1; i >= 0; i--) {
+          var selector = rules[i].selector;
 
           if ($(dom).is(selector)) {
-            matchedRules.push(rule);
+            matchedRules.push(rules[i]);
+            rules.splice(i, 1); // splice for removing the rule from hashtable
           }
-        });
+        }
       }
-      //classHashtable.forEach(function(selector) {
-        //var rightMostSelector = getRightMostSelector(selector);
-
-        //if (rightMostSelector == ('.'+attributes.class)) {
-          //matchedRules.push(selector);
-        //}
-      //});
     }
 
     // select from tag hashtable
     var rules = hashtable.tag[dom.name];
     if (rules !== undefined) {
-      rules.forEach(function(rule) {
-        var selector = rule.selector;
+      // loop from the last so there will be no problem when splice the array
+      for (var i = rules.length - 1; i >= 0; i--) {
+        var selector = rules[i].selector;
 
         if ($(dom).is(selector)) {
-          matchedRules.push(rule);
+          matchedRules.push(rules[i]);
+          rules.splice(i, 1); // splice for removing the rule from hashtable
         }
-      });
+      }
     }
-    //tagHashtable.forEach(function(selector) {
-      //var rightMostSelector = getRightMostSelector(selector);
-
-      //if (rightMostSelector == dom.name) {
-        //matchedRules.push(selector);
-      //}
-    //});
 
     // select from uncategorized
     for (property in hashtable.uncategorized) {
       var rules = hashtable.uncategorized[property];
-      rules.forEach(function(rule) {
-        var selector = rule.selector;
+      // loop from the last so there will be no problem when splice the array
+      for (var i = rules.length - 1; i >= 0; i--) {
+        var selector = rules[i].selector;
 
         if ($(dom).is(selector)) {
-          matchedRules.push(rule);
+          matchedRules.push(rules[i]);
+          rules.splice(i, 1); // splice for removing the rule from hashtable
         }
-      });
+      }
     }
-
-    //uncategorizedHashtable.forEach(function(selector) {
-      //var rightMostSelector = getRightMostSelector(selector),
-        //selectors = hashtable.uncategorized[rightMostSelector]
-      //;
-
-      //selectors.forEach(function(selector) {
-        //if ($(dom).is(selector)) {
-          //matchedRules.push(selector);
-        //}
-      //});
-      //var rightMostSelector = getRightMostSelector(selector);
-
-      //if (rightMostSelector == ('#'+attributes.id)) {
-        //matchedRules.push(selector);
-      //}
-    //});
   }
 
   //console.log(matchedRules);
   return matchedRules;
 };
-//selectorMatching($('div')[0]);
 
 // Algorithm Matched Selector
 var annotatedRules = [],
+  selectableDOM = [],
+  id = 1,
   stack = [$('body')[0]]
 ;
 while (stack.length > 0) {
@@ -181,6 +182,8 @@ while (stack.length > 0) {
     children = [],
     matchedRules
   ;
+  node.id = id;
+  id++;
 
   if (node.children !== undefined) {
     node.children.forEach(function(child) {
@@ -192,24 +195,28 @@ while (stack.length > 0) {
   }
 
   matchedRules = selectorMatching(node);
-  matchedRules.forEach(function(rule) {
-    var nodes = [],
-      selector = rule.selector
-    ;
+  if (matchedRules.length > 0) {
+    selectableDOM.push(node);
+    matchedRules.forEach(function(rule) {
+      var nodes = [],
+        selector = rule.selector
+      ;
 
-    $(selector).each(function(key, element) {
-      nodes.push(element);
+      $(selector).each(function(key, element) {
+        nodes.push(element);
+      });
+      
+      annotatedRules.push({
+        selector: selector,
+        declarations: rule.declarations,
+        orderPosition: rule.orderPosition,
+        matched: true,
+        matchedNodes: nodes
+      });
     });
-    
-    annotatedRules.push({
-      selector: selector,
-      declarations: rule.declarations,
-      matched: true,
-      matchedNodes: nodes
-    });
-  });
+  }
 }
-console.log(annotatedRules);
+console.log(selectableDOM);
 
 //var result = css.stringify(ast);
 //console.log(ast.stylesheet.rules[0]);
