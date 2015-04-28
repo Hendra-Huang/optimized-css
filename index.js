@@ -38,65 +38,40 @@ var SelectorMatching = function() {
         ;
 
         selectors.forEach(function(selector) {
-          var rightMostSelector = getRightMostSelector(selector);
+          var rightMostSelector = getRightMostSelector(selector),
+            ruleData = {
+              selector: selector, 
+              declarations: declarations,
+              orderPosition: orderPosition
+            }
+          ;
 
           if (rightMostSelector[0] == '#') {
             if (rightMostSelector in hashtable.id) {
-              hashtable.id[rightMostSelector].push({
-                selector: selector, 
-                declarations: declarations,
-                orderPosition: orderPosition
-              });
+              hashtable.id[rightMostSelector].push(ruleData);
             } else {
-              hashtable.id[rightMostSelector] = [{
-                selector: selector,
-                declarations: declarations,
-                orderPosition: orderPosition
-              }];
+              hashtable.id[rightMostSelector] = [ruleData];
             }
           } else if (rightMostSelector[0] == '.') {
             if (rightMostSelector in hashtable.class) {
-              hashtable.class[rightMostSelector].push({
-                selector: selector,
-                declarations: declarations,
-                orderPosition: orderPosition
-              });
+              hashtable.class[rightMostSelector].push(ruleData);
             } else {
-              hashtable.class[rightMostSelector] = [{
-                selector: selector,
-                declarations: declarations,
-                orderPosition: orderPosition
-              }];
+              hashtable.class[rightMostSelector] = [ruleData];
             }
           } else if (rightMostSelector.match(/^\w+/)) {
             if (rightMostSelector in hashtable.tag) {
-              hashtable.tag[rightMostSelector].push({
-                selector: selector, 
-                declarations: declarations,
-                orderPosition: orderPosition
-              });
+              hashtable.tag[rightMostSelector].push(ruleData);
             } else {
-              hashtable.tag[rightMostSelector] = [{
-                selector: selector, 
-                declarations: declarations,
-                orderPosition: orderPosition
-              }];
+              hashtable.tag[rightMostSelector] = [ruleData];
             }
           } else {
             if (rightMostSelector in hashtable.uncategorized) {
-              hashtable.uncategorized[rightMostSelector].push({
-                selector: selector, 
-                declarations: declarations,
-                orderPosition: orderPosition
-              });
+              hashtable.uncategorized[rightMostSelector].push(ruleData);
             } else {
-              hashtable.uncategorized[rightMostSelector] = [{
-                selector: selector,
-                declarations: declarations,
-                orderPosition: orderPosition
-              }];
+              hashtable.uncategorized[rightMostSelector] = [ruleData];
             }
           }
+
           orderPosition++;
         });
       }
@@ -222,10 +197,12 @@ while (stack.length > 0) {
     });
   }
 }
-//console.log(annotatedRules[3].matchedNodes);
+//console.log(annotatedRules);
 
 // Order Specificity
 var orderSpecificity = function(rules) {
+  var orderedRules = [];
+
   var getSelectorScore = function(selector) {
     var selectorToken = /(?=\.)|(?=#)|(?=\[)|(?= \w+)|\>|\+/,
       tokenizedSelector = selector.split(selectorToken),
@@ -248,7 +225,6 @@ var orderSpecificity = function(rules) {
   rules.forEach(function(rule, index) {
     var selector = rule.selector,
       scores = [],
-      orderedRules = [],
       score = getSelectorScore(selector)
     ;
 
@@ -275,9 +251,9 @@ var orderSpecificity = function(rules) {
         }
       }
     }
-
-    return orderedRules;
   });
+
+  return orderedRules;
 };
 
 // Algorithm Effective Selector
@@ -296,10 +272,38 @@ selectableDOM.forEach(function(dom) {
     return matchedRules;
   };
 
-  var rules = getMatchingRules(dom),
-    orderedRules = orderSpecificity(rules)
-  ;
+  var rules, orderedRules;
+  
+  rules = getMatchingRules(dom);
+  orderedRules = orderSpecificity(rules);
+
+  for (var i = 0; i < orderedRules.length; i++) {
+    var rule = orderedRules[i],
+      declarations = rule.declarations
+    ;
+
+    for (var j = 0; j < declarations.length; j++) {
+      var declaration = declarations[j];
+
+      if (declaration.type == 'declaration' && i === 0) {
+        declaration.status = 'effective';
+      }
+
+      for (var k = i + 1; k < orderedRules.length; k++) {
+        var nextRule = orderedRules[k];
+
+        for (var l = 0; l < nextRule.declarations.length; l++) {
+          var nextDeclaration = nextRule.declarations[l];
+
+          if (nextDeclaration.type == 'declaration' && nextDeclaration.property == declaration.property) {
+            nextDeclaration.status = 'overriden';
+          }
+        }
+      }
+    }
+  }
 });
+console.log(annotatedRules[0].declarations);
 
 //var result = css.stringify(ast);
 //console.log(ast.stylesheet.rules[0]);

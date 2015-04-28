@@ -10,3 +10,6 @@ body div, #a {
 .unused {
   color: green;
 }
+div {
+  color: blue;
+}
