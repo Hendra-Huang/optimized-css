@@ -118,7 +118,45 @@ selectableDOM.forEach(function(dom) {
     }
   }
 });
-console.log(annotatedRules[0].declarations);
+console.log(annotatedRules[4].declarations);
+
+// Find unused rules
+var findUnusedRules = function(annotatedRules) {
+  var unusedRules = [],
+    orderPosition = 1
+  ;
+  stylesheets.forEach(function(stylesheet) {
+    var rules = stylesheet.stylesheet.rules;
+
+    rules.forEach(function(rule) {
+      if (rule.type == 'rule') {
+        var selectors = rule.selectors,
+          declarations = rule.declarations
+        ;
+
+        selectors.forEach(function(selector) {
+          var isUsed = false;
+
+          annotatedRules.forEach(function(annotatedRule) {
+            if (annotatedRule.orderPosition == orderPosition) {
+              isUsed = true;
+            }
+          });
+
+          if (!isUsed) {
+            unusedRules.push(rule);
+          }
+
+          orderPosition++;
+        });
+      }
+    });
+  });
+
+  return unusedRules;
+};
+var unusedRules = findUnusedRules(annotatedRules);
+//console.log(unusedRules[0].declarations);
 
 //var result = css.stringify(ast);
 //console.log(ast.stylesheet.rules[0]);
