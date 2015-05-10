@@ -72,7 +72,7 @@ while (stack.length > 0) {
 //console.log(annotatedRules);
 
 // Algorithm Effective Selector
-selectableDOM.forEach(function(dom) {
+selectableDOM.forEach(function(dom, index) {
   var getMatchingRules = function(dom) {
     var matchedRules = [];
 
@@ -99,9 +99,10 @@ selectableDOM.forEach(function(dom) {
 
     for (var j = 0; j < declarations.length; j++) {
       var declaration = declarations[j];
+      declaration.status = declaration.status || {};
 
-      if (declaration.type == 'declaration' && i === 0) {
-        declaration.status = 'effective';
+      if (declaration.type == 'declaration' && declaration.status[index] === undefined) {
+        declaration.status[index] = 'effective';
       }
 
       for (var k = i + 1; k < orderedRules.length; k++) {
@@ -109,16 +110,28 @@ selectableDOM.forEach(function(dom) {
 
         for (var l = 0; l < nextRule.declarations.length; l++) {
           var nextDeclaration = nextRule.declarations[l];
+          nextDeclaration.status = nextDeclaration.status || {};
 
           if (nextDeclaration.type == 'declaration' && nextDeclaration.property == declaration.property) {
-            nextDeclaration.status = 'overriden';
+            nextDeclaration.status[index] = 'overridden';
           }
         }
       }
     }
   }
 });
-console.log(annotatedRules[4].declarations);
+
+// Wheter a property is overridden or not
+var isOverridden = function(declaration) {
+  for (index in declaration.status) {
+    if (declaration.status[index] == 'effective') {
+      return false;
+    }
+  }
+
+  return true;
+}
+//console.log(isOverridden(annotatedRules[2].declarations[0]));
 
 // Find unused rules
 var findUnusedRules = function(annotatedRules) {
@@ -155,10 +168,31 @@ var findUnusedRules = function(annotatedRules) {
 
   return unusedRules;
 };
-var unusedRules = findUnusedRules(annotatedRules);
+//var unusedRules = findUnusedRules(annotatedRules);
 //console.log(unusedRules[0].declarations);
 
-//var result = css.stringify(ast);
-//console.log(ast.stylesheet.rules[0]);
-//console.log(result);
-//console.log($("#a").is(rule.selector));
+// Print out the optimized css
+var cssData = '';
+annotatedRules.forEach(function(annotatedRule) {
+  var declarations, ast;
+
+  declarations = annotatedRule.declarations.filter(function(declaration) {
+    return !isOverridden(declaration);
+  });
+  if (declarations.length > 0) {
+    ast = {
+      type: 'stylesheet',
+      stylesheet: {
+        rules: [
+          {
+            type: 'rule',
+            selectors: [annotatedRule.selector],
+            declarations: declarations
+          }
+        ]
+      }
+    };
+    cssData += css.stringify(ast, {compress: true});
+  }
+});
+fs.writeFile("./optimized.css", cssData);
