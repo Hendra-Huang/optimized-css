@@ -1,1 +1,22 @@
-body#body{font-size:12px;}body div#a{text-decoration:underline;color:red;}#a{color:yellow;}body div{color:yellow;}
+body#body {
+  font-size: 12px;
+}
+
+body div#a {
+  text-decoration: underline;
+  color: red;
+}
+
+body div {
+  color: yellow;
+}
+
+@media (min-width: 700px) {
+  #a {
+    color: red;
+  }
+
+  body div {
+    color: red;
+  }
+}

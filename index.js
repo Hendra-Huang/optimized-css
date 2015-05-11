@@ -62,6 +62,7 @@ while (stack.length > 0) {
           selector: selector,
           declarations: rule.declarations,
           orderPosition: rule.orderPosition,
+          media: rule.media,
           matched: true,
           matchedNodes: nodes
         });
@@ -112,7 +113,7 @@ selectableDOM.forEach(function(dom, index) {
           var nextDeclaration = nextRule.declarations[l];
           nextDeclaration.status = nextDeclaration.status || {};
 
-          if (nextDeclaration.type == 'declaration' && nextDeclaration.property == declaration.property) {
+          if (nextDeclaration.type == 'declaration' && nextDeclaration.property == declaration.property && nextRule.media == rule.media) {
             nextDeclaration.status[index] = 'overridden';
           }
         }
@@ -131,18 +132,16 @@ var isOverridden = function(declaration) {
 
   return true;
 }
-//console.log(isOverridden(annotatedRules[2].declarations[0]));
 
 // Find unused rules
+// @TODO: fix changes with media query
 var findUnusedRules = function(annotatedRules) {
   var unusedRules = [],
     orderPosition = 1
   ;
   stylesheets.forEach(function(stylesheet) {
-    var rules = stylesheet.stylesheet.rules;
-
-    rules.forEach(function(rule) {
-      if (rule.type == 'rule') {
+    var rules = stylesheet.stylesheet.rules,
+      checkRule = function(rule) {
         var selectors = rule.selectors,
           declarations = rule.declarations
         ;
@@ -163,36 +162,59 @@ var findUnusedRules = function(annotatedRules) {
           orderPosition++;
         });
       }
+    ;
+
+    rules.forEach(function(rule) {
+      if (rule.type == 'media') {
+        var media = rule.media;
+
+        rule.rules.forEach(function(mediaRule) {
+          checkRule(mediaRule);
+        });
+      } else if (rule.type == 'rule') {
+        checkRule(rule);
+      }
     });
   });
 
   return unusedRules;
 };
 //var unusedRules = findUnusedRules(annotatedRules);
-//console.log(unusedRules[0].declarations);
+//console.log(unusedRules);
 
 // Print out the optimized css
-var cssData = '';
+var rules = [], mediaRules = {};
 annotatedRules.forEach(function(annotatedRule) {
-  var declarations, ast;
+  var declarations;
 
   declarations = annotatedRule.declarations.filter(function(declaration) {
     return !isOverridden(declaration);
   });
   if (declarations.length > 0) {
-    ast = {
-      type: 'stylesheet',
-      stylesheet: {
-        rules: [
-          {
-            type: 'rule',
-            selectors: [annotatedRule.selector],
-            declarations: declarations
-          }
-        ]
-      }
+    rule = {
+      type: 'rule',
+      selectors: [annotatedRule.selector],
+      declarations: declarations
     };
-    cssData += css.stringify(ast, {compress: true});
+    if (annotatedRule.media == '') {
+      rules.push(rule);
+    } else {
+      mediaRules[annotatedRule.media] = mediaRules[annotatedRule.media] || [];
+      mediaRules[annotatedRule.media].push(rule);
+    }
   }
 });
-fs.writeFile("./optimized.css", cssData);
+var ast = {
+  type: 'stylesheet',
+  stylesheet: {
+    rules: rules
+  }
+};
+for (media in mediaRules) {
+  ast.stylesheet.rules.push({
+    type: 'media',
+    media: media,
+    rules: mediaRules[media]
+  });
+}
+fs.writeFile("./optimized.css", css.stringify(ast));

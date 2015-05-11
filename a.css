@@ -5,12 +5,24 @@ body div#a {
 body#body {
   font-size: 12px;
 }
-body div, #a {
-  color: yellow;
-}
 .unused {
   color: green;
 }
 div {
   color: blue;
+}
+body div, #a {
+  color: yellow;
+}
+
+@media (min-width: 700px) {
+  .unused {
+    color: green;
+  }
+  body div, #a {
+    color: red;
+  }
+  div {
+    color: blue;
+  }
 }
