@@ -1,0 +1,17 @@
+{
+  "name": "optimized-css",
+  "version": "0.0.1",
+  "description": "Optimized CSS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hendra-Huang/optimized-css.git"
+  },
+  "dependencies": {
+    "cheerio": "0.18.x",
+    "css": "2.1.x"
+  },
+  "engine": {
+    "node": "0.10.x"
+  },
+  "private": true
+}
