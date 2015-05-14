@@ -1,4 +1,5 @@
 var fs = require('fs'),
+  path = require('path'),
   css = require('css'),
   cheerio = require('cheerio'),
   stylesheet = require('./lib/stylesheet'),
@@ -6,11 +7,11 @@ var fs = require('fs'),
   cssSpecificity = require('./lib/css-specificity')
 ;
 
-var file = process.argv[2] ,
+var file = process.argv[2],
   $ = cheerio.load(fs.readFileSync(file))
 ;
 
-stylesheets = stylesheet.parse($('link'));
+stylesheets = stylesheet.parse($('link'), path.dirname(file));
 selectorMatching.generateHashtable(stylesheets);
 
 // Algorithm Matched Selector
@@ -51,15 +52,18 @@ while (stack.length > 0) {
 
       if (duplicate.length == 0) {
         var nodes = [],
-          selector = rule.selector
+          selector = rule.selector,
+          tokenizedSelectors = selector.split(/:+(?=\w+|-)(?!not)/)
         ;
 
+        // testing selector without pseudo-class
+        selector = tokenizedSelectors.length > 1 ? tokenizedSelectors[0] : selector;
         $(selector).each(function(key, element) {
           nodes.push(element);
         });
         
         annotatedRules.push({
-          selector: selector,
+          selector: rule.selector,
           declarations: rule.declarations,
           orderPosition: rule.orderPosition,
           media: rule.media,
@@ -95,6 +99,7 @@ selectableDOM.forEach(function(dom, index) {
 
   for (var i = 0; i < orderedRules.length; i++) {
     var rule = orderedRules[i],
+      selector = rule.selector,
       declarations = rule.declarations
     ;
 
@@ -106,15 +111,19 @@ selectableDOM.forEach(function(dom, index) {
         declaration.status[index] = 'effective';
       }
 
-      for (var k = i + 1; k < orderedRules.length; k++) {
-        var nextRule = orderedRules[k];
+      // selector with pseudo-class is impossible to override another property
+      tokenizedSelectors = selector.split(/:+(?=\w+|-)(?!not)/)
+      if (tokenizedSelectors.length === 1) {
+        for (var k = i + 1; k < orderedRules.length; k++) {
+          var nextRule = orderedRules[k];
 
-        for (var l = 0; l < nextRule.declarations.length; l++) {
-          var nextDeclaration = nextRule.declarations[l];
-          nextDeclaration.status = nextDeclaration.status || {};
+          for (var l = 0; l < nextRule.declarations.length; l++) {
+            var nextDeclaration = nextRule.declarations[l];
+            nextDeclaration.status = nextDeclaration.status || {};
 
-          if (nextDeclaration.type == 'declaration' && nextDeclaration.property == declaration.property && nextRule.media == rule.media) {
-            nextDeclaration.status[index] = 'overridden';
+            if (nextDeclaration.type == 'declaration' && nextDeclaration.property == declaration.property && nextRule.media == rule.media) {
+              nextDeclaration.status[index] = 'overridden';
+            }
           }
         }
       }
@@ -134,7 +143,6 @@ var isOverridden = function(declaration) {
 }
 
 // Find unused rules
-// @TODO: fix changes with media query
 var findUnusedRules = function(annotatedRules) {
   var unusedRules = [],
     orderPosition = 1
@@ -217,4 +225,5 @@ for (media in mediaRules) {
     rules: mediaRules[media]
   });
 }
-fs.writeFile("./optimized.css", css.stringify(ast));
+//fs.writeFile("./optimized.css", css.stringify(ast));
+fs.writeFile("./optimized.css", css.stringify(ast, {compress: true}));

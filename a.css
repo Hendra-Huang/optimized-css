@@ -1,28 +1,21 @@
-body div#a {
-  text-decoration: underline;
-  color: red;
-}
-body#body {
-  font-size: 12px;
-}
-.unused {
-  color: green;
-}
 div {
   color: blue;
 }
-body div, #a {
+body div {
+  color: black;
+}
+body div:target, #a:hover {
   color: yellow;
 }
-
-@media (min-width: 700px) {
-  .unused {
-    color: green;
-  }
-  body div, #a {
-    color: red;
-  }
-  div {
-    color: blue;
-  }
+:not(p) {
+  color: red;
+}
+.zone {
+  font-size: 12px;
+}
+html span {
+  color: green;
+}
+.zone {
+  font-size: 14px;
 }
