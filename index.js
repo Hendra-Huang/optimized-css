@@ -241,5 +241,5 @@ $('link').each(function() {
     }
   }
 });
-$('head').append('<link rel="stylesheet" type="text/css" href="' + outputDir + '/optimized.css" />');
+$('head').append('<link rel="stylesheet" type="text/css" href="optimized.css" />');
 fs.writeFile(file, $.html());
