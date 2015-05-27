@@ -13,5 +13,8 @@
   "engine": {
     "node": "0.10.x"
   },
+  "bin": {
+    "optimized-css": "index.js"
+  },
   "private": true
 }

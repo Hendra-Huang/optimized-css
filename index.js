@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var fs = require('fs'),
   path = require('path'),
   css = require('css'),
@@ -8,6 +10,7 @@ var fs = require('fs'),
 ;
 
 var file = process.argv[2],
+  outputDir = process.argv[3],
   $ = cheerio.load(fs.readFileSync(file))
 ;
 
@@ -226,4 +229,17 @@ for (media in mediaRules) {
   });
 }
 //fs.writeFile("./optimized.css", css.stringify(ast));
-fs.writeFile("./optimized.css", css.stringify(ast, {compress: true}));
+fs.writeFile(outputDir + "/optimized.css", css.stringify(ast, {compress: true}));
+
+// buang semua css dan load optimized.css
+$('link').each(function() {
+  var filename;
+
+  if (this.type == 'tag' && this.attribs.href != '') {
+    if (this.attribs.rel == 'stylesheet' || this.attribs.type == 'text/css') {
+      $(this).remove();
+    }
+  }
+});
+$('head').append('<link rel="stylesheet" type="text/css" href="' + outputDir + '/optimized.css" />');
+fs.writeFile(file, $.html());
