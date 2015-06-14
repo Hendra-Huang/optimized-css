@@ -7,7 +7,7 @@
     "url": "https://github.com/Hendra-Huang/optimized-css.git"
   },
   "dependencies": {
-    "cheerio": "0.18.x",
+    "cheerio": "0.19.x",
     "css": "2.1.x"
   },
   "engine": {

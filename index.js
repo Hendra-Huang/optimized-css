@@ -21,23 +21,23 @@ selectorMatching.generateHashtable(stylesheets);
 var annotatedRules = [],
   selectableDOM = [],
   id = 1,
-  stack = [$('body')[0]]
+  stack = [$('body')[0], $('html')[0]]
 ;
 while (stack.length > 0) {
   var node = stack.pop(),
-    children = [],
     matchedRules
   ;
+  if (node === undefined) continue;
+
   node.id = id;
   id++;
 
-  if (node.children !== undefined) {
+  if (node.children !== undefined && node.name != 'html') {
     node.children.forEach(function(child) {
-      if (child.type == 'tag') {
-        children.push(child);
+      if (child.type == 'tag' && child.name !== 'link' && child.name !== 'script') {
+        stack.push(child);
       }
     });
-    stack = stack.concat(children);
   }
 
   matchedRules = selectorMatching.getRules(node, $);
@@ -77,7 +77,23 @@ while (stack.length > 0) {
     });
   }
 }
+annotatedRules.sort(function(a, b) {
+  if (a.orderPosition < b.orderPosition) return -1;
+  if (a.orderPosition > b.orderPosition) return 1;
+
+  return 0;
+});
 //console.log(annotatedRules);
+
+var isPropertyImportant = function(property) {
+  var token = property.split('!');
+
+  if (token.length > 0) {
+    if (token[1] == 'important') return true;
+  }
+
+  return false;
+};
 
 // Algorithm Effective Selector
 selectableDOM.forEach(function(dom, index) {
@@ -125,7 +141,14 @@ selectableDOM.forEach(function(dom, index) {
             nextDeclaration.status = nextDeclaration.status || {};
 
             if (nextDeclaration.type == 'declaration' && nextDeclaration.property == declaration.property && nextRule.media == rule.media) {
-              nextDeclaration.status[index] = 'overridden';
+              if (isPropertyImportant(declaration.value) || !isPropertyImportant(nextDeclaration.value)) {
+                nextDeclaration.status[index] = 'overridden';
+                if (nextRule.selector == '.columns .destaque-terciario-medio-foto-lado a.foto') {
+                  orderedRules.forEach(function(a) {
+                    console.log(a.selector + ' ');
+                  })
+                }
+              }
             }
           }
         }
@@ -136,6 +159,8 @@ selectableDOM.forEach(function(dom, index) {
 
 // Wheter a property is overridden or not
 var isOverridden = function(declaration) {
+  if (declaration.status === undefined) return false;
+
   for (index in declaration.status) {
     if (declaration.status[index] == 'effective') {
       return false;
@@ -231,15 +256,15 @@ for (media in mediaRules) {
 //fs.writeFile("./optimized.css", css.stringify(ast));
 fs.writeFile(outputDir + "/optimized.css", css.stringify(ast, {compress: true}));
 
-// buang semua css dan load optimized.css
-$('link').each(function() {
-  var filename;
+//buang semua css dan load optimized.css
+//$('link').each(function() {
+  //var filename;
 
-  if (this.type == 'tag' && this.attribs.href != '') {
-    if (this.attribs.rel == 'stylesheet' || this.attribs.type == 'text/css') {
-      $(this).remove();
-    }
-  }
-});
-$('head').append('<link rel="stylesheet" type="text/css" href="optimized.css" />');
-fs.writeFile(file, $.html());
+  //if (this.type == 'tag' && this.attribs.href != '') {
+    //if (this.attribs.rel == 'stylesheet' || this.attribs.type == 'text/css') {
+      //$(this).remove();
+    //}
+  //}
+//});
+//$('head').append('<link rel="stylesheet" type="text/css" href="optimized.css" />');
+//fs.writeFile(file, $.html({decodeEntities: false}));
