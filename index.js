@@ -56,14 +56,14 @@ while (stack.length > 0) {
       if (duplicate.length == 0) {
         var nodes = [],
           selector = rule.selector,
-          tokenizedSelectors = selector.split(/:+(?=\w+|-)(?!not)/)
+          subSelector = selector.replace(/[^\\]:+(?!not\(.*\))[\w-\(\)\d\+]+/g, function(match) { return match.substring(0, 1); })
         ;
 
-        // testing selector without pseudo-class
-        selector = tokenizedSelectors.length > 1 ? tokenizedSelectors[0] : selector;
-        $(selector).each(function(key, element) {
-          nodes.push(element);
-        });
+        if (subSelector.indexOf(':') === -1) {
+          $(subSelector).each(function(key, element) {
+            nodes.push(element);
+          });
+        }
         
         annotatedRules.push({
           selector: rule.selector,
@@ -86,10 +86,8 @@ annotatedRules.sort(function(a, b) {
 //console.log(annotatedRules);
 
 var isPropertyImportant = function(property) {
-  var token = property.split('!');
-
-  if (token.length > 0) {
-    if (token[1] == 'important') return true;
+  if (/\!important/.test(property)) {
+    return true;
   }
 
   return false;
@@ -143,11 +141,6 @@ selectableDOM.forEach(function(dom, index) {
             if (nextDeclaration.type == 'declaration' && nextDeclaration.property == declaration.property && nextRule.media == rule.media) {
               if (isPropertyImportant(declaration.value) || !isPropertyImportant(nextDeclaration.value)) {
                 nextDeclaration.status[index] = 'overridden';
-                if (nextRule.selector == '.columns .destaque-terciario-medio-foto-lado a.foto') {
-                  orderedRules.forEach(function(a) {
-                    console.log(a.selector + ' ');
-                  })
-                }
               }
             }
           }
@@ -219,7 +212,22 @@ var findUnusedRules = function(annotatedRules) {
 //console.log(unusedRules);
 
 // Print out the optimized css
-var rules = [], mediaRules = {};
+var rules = [], mediaRules = [], lastMedia = undefined;
+var ast = {
+  type: 'stylesheet',
+  stylesheet: {
+    rules: []
+  }
+};
+var clone = function(obj) {
+  if (null == obj || "object" != typeof obj) return obj;
+  var copy = obj.constructor();
+  for (var attr in obj) {
+    if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+  }
+
+  return copy;
+}
 annotatedRules.forEach(function(annotatedRule) {
   var declarations;
 
@@ -232,39 +240,53 @@ annotatedRules.forEach(function(annotatedRule) {
       selectors: [annotatedRule.selector],
       declarations: declarations
     };
-    if (annotatedRule.media == '') {
-      rules.push(rule);
+    if (annotatedRule.media === '') {
+      if (lastMedia !== undefined && lastMedia !== '') {
+        ast.stylesheet.rules.push({
+          type: 'media',
+          media: lastMedia,
+          rules: clone(mediaRules)
+        });
+        mediaRules = [];
+      }
+      ast.stylesheet.rules.push(rule);
+      lastMedia = '';
     } else {
-      mediaRules[annotatedRule.media] = mediaRules[annotatedRule.media] || [];
-      mediaRules[annotatedRule.media].push(rule);
+      if (mediaRules.length === 0 || annotatedRule.media === lastMedia) {
+        mediaRules.push(rule);
+        lastMedia = annotatedRule.media;
+      } else {
+        ast.stylesheet.rules.push({
+          type: 'media',
+          media: lastMedia,
+          rules: clone(mediaRules)
+        });
+
+        mediaRules = [rule];
+        lastMedia = annotatedRule.media;
+      }
     }
   }
 });
-var ast = {
-  type: 'stylesheet',
-  stylesheet: {
-    rules: rules
-  }
-};
-for (media in mediaRules) {
+if (mediaRules.length > 0) {
   ast.stylesheet.rules.push({
     type: 'media',
-    media: media,
-    rules: mediaRules[media]
+    media: lastMedia,
+    rules: mediaRules
   });
 }
-//fs.writeFile("./optimized.css", css.stringify(ast));
+//fs.writeFile(outputDir + "./optimized.css", css.stringify(ast));
 fs.writeFile(outputDir + "/optimized.css", css.stringify(ast, {compress: true}));
 
 //buang semua css dan load optimized.css
-//$('link').each(function() {
-  //var filename;
+$('link').each(function() {
+  var filename;
 
-  //if (this.type == 'tag' && this.attribs.href != '') {
-    //if (this.attribs.rel == 'stylesheet' || this.attribs.type == 'text/css') {
-      //$(this).remove();
-    //}
-  //}
-//});
-//$('head').append('<link rel="stylesheet" type="text/css" href="optimized.css" />');
-//fs.writeFile(file, $.html({decodeEntities: false}));
+  if (this.type == 'tag' && this.attribs.href != '') {
+    if (this.attribs.rel == 'stylesheet' || this.attribs.type == 'text/css') {
+      $(this).remove();
+    }
+  }
+});
+$('head').append('<link rel="stylesheet" type="text/css" href="optimized.css" />');
+fs.writeFile(file, $.html({decodeEntities: false}));
