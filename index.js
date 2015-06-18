@@ -41,6 +41,7 @@ while (stack.length > 0) {
   }
 
   matchedRules = selectorMatching.getRules(node, $);
+
   if (matchedRules.length > 0) {
     selectableDOM.push(node);
     matchedRules.forEach(function(rule) {
@@ -276,7 +277,7 @@ if (mediaRules.length > 0) {
   });
 }
 //fs.writeFile(outputDir + "./optimized.css", css.stringify(ast));
-fs.writeFile(outputDir + "/optimized.css", css.stringify(ast, {compress: true}));
+//fs.writeFile(outputDir + "/optimized.css", css.stringify(ast, {compress: true}), {encoding: 'utf-8'});
 
 //buang semua css dan load optimized.css
 $('link').each(function() {
@@ -284,9 +285,54 @@ $('link').each(function() {
 
   if (this.type == 'tag' && this.attribs.href != '') {
     if (this.attribs.rel == 'stylesheet' || this.attribs.type == 'text/css') {
-      $(this).remove();
+      var href = this.attribs.href,
+        astPerFile = {
+          type: 'stylesheet',
+          stylesheet: {
+            rules: []
+          }
+        }
+      ;
+
+      ast.stylesheet.rules.forEach(function(rule) {
+        if (rule.source == href) {
+          if (rule.type == 'media') {
+            var media = rule.media;
+
+            rule.rules.forEach(function(mediaRule) {
+              var selector = mediaRule.selector,
+                declarations = mediaRule.declarations,
+                astRules = [],
+                astRule = {
+                  type: 'rule',
+                  selectors: [selector],
+                  declarations: declarations
+                }
+              ;
+              astRules.push(astRule);
+            });
+            astPerFile.stylesheet.rules.push({
+              type: 'media',
+              media: media,
+              rules: astRules
+            });
+          } else if (rule.type == 'rule') {
+            astPerFile.stylesheet.rules.push({
+              type: 'rule',
+              selectors: [rule.selector],
+              declarations: rule.declarations
+            });
+          }
+        }
+      });
+
+      var basePath = path.dirname(file),
+        newFilePath = path.join(path.dirname(href), path.basename(href, '.css')) + '-optimized.css'
+      ;
+      fs.writeFileSync(path.join(basePath, newFilePath), css.stringify(ast, {compress: true}), {encoding: 'utf-8'});
+      this.attribs.href = newFilePath;
     }
   }
 });
-$('head').append('<link rel="stylesheet" type="text/css" href="optimized.css" />');
+//$('head').append('<link rel="stylesheet" type="text/css" href="optimized.css" />');
 fs.writeFile(file, $.html({decodeEntities: false}));
