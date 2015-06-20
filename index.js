@@ -72,7 +72,8 @@ while (stack.length > 0) {
           orderPosition: rule.orderPosition,
           media: rule.media,
           matched: true,
-          matchedNodes: nodes
+          matchedNodes: nodes,
+          source: rule.source
         });
       }
     });
@@ -239,7 +240,8 @@ annotatedRules.forEach(function(annotatedRule) {
     rule = {
       type: 'rule',
       selectors: [annotatedRule.selector],
-      declarations: declarations
+      declarations: declarations,
+      source: annotatedRule.source
     };
     if (annotatedRule.media === '') {
       if (lastMedia !== undefined && lastMedia !== '') {
@@ -295,31 +297,36 @@ $('link').each(function() {
       ;
 
       ast.stylesheet.rules.forEach(function(rule) {
-        if (rule.source == href) {
-          if (rule.type == 'media') {
-            var media = rule.media;
+        if (rule.type == 'media') {
+          var media = rule.media,
+            astRules = []
+          ;
 
-            rule.rules.forEach(function(mediaRule) {
-              var selector = mediaRule.selector,
+          rule.rules.forEach(function(mediaRule) {
+            if (path.join(mediaRule.source) == path.join(path.dirname(file), decodeURIComponent(href))) {
+              var selectors = mediaRule.selectors,
                 declarations = mediaRule.declarations,
-                astRules = [],
                 astRule = {
                   type: 'rule',
-                  selectors: [selector],
+                  selectors: selectors,
                   declarations: declarations
                 }
               ;
               astRules.push(astRule);
-            });
+            }
+          });
+          if (astRules.length > 0) {
             astPerFile.stylesheet.rules.push({
               type: 'media',
               media: media,
               rules: astRules
             });
-          } else if (rule.type == 'rule') {
+          }
+        } else if (rule.type == 'rule') {
+          if (path.join(rule.source) == path.join(path.dirname(file), decodeURIComponent(href))) {
             astPerFile.stylesheet.rules.push({
               type: 'rule',
-              selectors: [rule.selector],
+              selectors: rule.selectors,
               declarations: rule.declarations
             });
           }
@@ -328,8 +335,9 @@ $('link').each(function() {
 
       var basePath = path.dirname(file),
         newFilePath = path.join(path.dirname(href), path.basename(href, '.css')) + '-optimized.css'
+        decodeNewFilePath = path.join(path.dirname(href), decodeURIComponent(path.basename(href, '.css'))) + '-optimized.css'
       ;
-      fs.writeFileSync(path.join(basePath, newFilePath), css.stringify(ast, {compress: true}), {encoding: 'utf-8'});
+      fs.writeFileSync(path.join(basePath, decodeNewFilePath), css.stringify(astPerFile, {compress: true}), {encoding: 'utf-8'});
       this.attribs.href = newFilePath;
     }
   }
