@@ -9,8 +9,16 @@ var fs = require('fs'),
   cssSpecificity = require('./lib/css-specificity')
 ;
 
+if (process.argv.length < 3) {
+  console.log('Kegunaan: optimized-css html_file [option]');
+  console.log('option:');
+  console.log('-o Menampilkan banyak selector yang dihapus');
+
+  return;
+}
+
 var file = process.argv[2],
-  outputDir = process.argv[3],
+  outputCount = process.argv[3] === undefined ? false : true,
   $ = cheerio.load(fs.readFileSync(file))
 ;
 
@@ -85,7 +93,6 @@ annotatedRules.sort(function(a, b) {
 
   return 0;
 });
-//console.log(annotatedRules);
 
 var isPropertyImportant = function(property) {
   if (/\!important/.test(property)) {
@@ -165,10 +172,11 @@ var isOverridden = function(declaration) {
   return true;
 }
 
-// Find unused rules
-var findUnusedRules = function(annotatedRules) {
+// Count unused rules
+var countUnusedRules = function(annotatedRules) {
   var unusedRules = [],
-    orderPosition = 1
+    orderPosition = 1,
+    count = 0
   ;
   stylesheets.forEach(function(stylesheet) {
     var rules = stylesheet.stylesheet.rules,
@@ -177,21 +185,24 @@ var findUnusedRules = function(annotatedRules) {
           declarations = rule.declarations
         ;
 
-        selectors.forEach(function(selector) {
-          var isUsed = false;
+        if (selectors !== undefined) {
+          selectors.forEach(function(selector) {
+            var isUsed = false;
 
-          annotatedRules.forEach(function(annotatedRule) {
-            if (annotatedRule.orderPosition == orderPosition) {
-              isUsed = true;
+            annotatedRules.forEach(function(annotatedRule) {
+              if (annotatedRule.orderPosition == orderPosition) {
+                isUsed = true;
+              }
+            });
+
+            if (!isUsed) {
+              unusedRules.push(rule);
+              count++;
             }
+
+            orderPosition++;
           });
-
-          if (!isUsed) {
-            unusedRules.push(rule);
-          }
-
-          orderPosition++;
-        });
+        }
       }
     ;
 
@@ -208,10 +219,11 @@ var findUnusedRules = function(annotatedRules) {
     });
   });
 
-  return unusedRules;
+  return count;
 };
-//var unusedRules = findUnusedRules(annotatedRules);
-//console.log(unusedRules);
+if (outputCount) {
+  var countDeletedRules = countUnusedRules(annotatedRules);
+}
 
 // Print out the optimized css
 var rules = [], mediaRules = [], lastMedia = undefined;
@@ -269,6 +281,10 @@ annotatedRules.forEach(function(annotatedRule) {
         lastMedia = annotatedRule.media;
       }
     }
+  } else {
+    if (outputCount) {
+      countDeletedRules++;
+    }
   }
 });
 if (mediaRules.length > 0) {
@@ -278,10 +294,7 @@ if (mediaRules.length > 0) {
     rules: mediaRules
   });
 }
-//fs.writeFile(outputDir + "./optimized.css", css.stringify(ast));
-//fs.writeFile(outputDir + "/optimized.css", css.stringify(ast, {compress: true}), {encoding: 'utf-8'});
 
-//buang semua css dan load optimized.css
 $('link').each(function() {
   var filename;
 
@@ -342,5 +355,7 @@ $('link').each(function() {
     }
   }
 });
-//$('head').append('<link rel="stylesheet" type="text/css" href="optimized.css" />');
 fs.writeFile(file, $.html({decodeEntities: false}));
+if (outputCount) {
+  console.log('Jumlah rule yang dihapus: ' + countDeletedRules);
+}
